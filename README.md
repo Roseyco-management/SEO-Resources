@@ -1,6 +1,6 @@
-# SEO Resources - The Definitive Collection
+# SEO & Marketing Resources - The Definitive Collection
 
-The most comprehensive open-source SEO resource repository. Covers every layer of modern search optimization: Technical SEO, Content Strategy, AI Search (GEO/AEO/LLMO), Schema Markup, Performance, Analytics, and Automation.
+The most comprehensive open-source SEO and marketing resource repository. Covers every layer of modern search optimization, conversion rate optimization, growth marketing, and AI-powered marketing automation.
 
 ## What's Inside
 
@@ -215,6 +215,71 @@ Layer 1: Infrastructure
 
 ---
 
+## Marketing Skills (`/skills/`)
+
+35 Claude Code marketing skills — ready-to-use AI-powered frameworks for every marketing discipline.
+
+### SEO & Search
+| Skill | What it does |
+|-------|-------------|
+| `ai-seo` | Optimize content for AI search engines (GEO/AEO/LLMO) |
+| `seo-audit` | Audit and diagnose SEO issues on any site |
+| `schema-markup` | Add, fix, and optimize structured data (JSON-LD) |
+| `programmatic-seo` | Create SEO-driven pages at scale with templates + data |
+| `site-architecture` | Plan site hierarchy, navigation, URL structure, internal linking |
+
+### Content & Copy
+| Skill | What it does |
+|-------|-------------|
+| `content-strategy` | Plan what content to create, topic clusters, editorial calendar |
+| `copywriting` | Write/rewrite marketing copy for any page type |
+| `copy-editing` | Edit, review, and polish existing marketing copy |
+| `humanizer` | Remove AI-generated writing patterns, make text natural |
+| `cold-email` | Write B2B cold emails and follow-up sequences |
+| `email-sequence` | Create drip campaigns, nurture sequences, lifecycle emails |
+| `social-content` | Create and optimize content for LinkedIn, X, Instagram, TikTok |
+
+### Conversion Rate Optimization
+| Skill | What it does |
+|-------|-------------|
+| `page-cro` | Optimize any marketing page for conversions |
+| `form-cro` | Optimize lead capture, contact, and demo request forms |
+| `signup-flow-cro` | Optimize signup, registration, and trial activation flows |
+| `onboarding-cro` | Optimize post-signup activation and time-to-value |
+| `popup-cro` | Create/optimize popups, modals, slide-ins for conversion |
+| `paywall-upgrade-cro` | Create/optimize in-app paywalls and upsell screens |
+
+### Paid Advertising
+| Skill | What it does |
+|-------|-------------|
+| `paid-ads` | Google Ads, Meta, LinkedIn, Twitter/X campaign management |
+| `ad-creative` | Generate ad headlines, descriptions, and variations at scale |
+| `ab-test-setup` | Plan and implement A/B tests and experiments |
+| `analytics-tracking` | Set up GA4, GTM, conversion tracking, UTM parameters |
+
+### Growth & Strategy
+| Skill | What it does |
+|-------|-------------|
+| `marketing-ideas` | Generate marketing ideas and growth strategies |
+| `marketing-psychology` | Apply behavioral science and cognitive biases to marketing |
+| `customer-research` | Conduct and synthesize customer research (ICP, interviews) |
+| `competitor-alternatives` | Create competitor comparison and "vs" pages |
+| `lead-magnets` | Create lead magnets for email capture and lead gen |
+| `free-tool-strategy` | Plan and build free tools for marketing (engineering as marketing) |
+| `launch-strategy` | Plan product launches, feature announcements, go-to-market |
+| `referral-program` | Create and optimize referral/affiliate programs |
+| `churn-prevention` | Build cancellation flows, save offers, dunning, retention |
+
+### Revenue & Sales
+| Skill | What it does |
+|-------|-------------|
+| `pricing-strategy` | Pricing decisions, packaging, monetization strategy |
+| `product-marketing-context` | Create product positioning and marketing context docs |
+| `revops` | Revenue operations, lead scoring, MQL/SQL lifecycle |
+| `sales-enablement` | Pitch decks, one-pagers, objection handling, demo scripts |
+
+---
+
 ## Quick Start
 
 1. **Read the playbook**: Start with [SEO Master Playbook 2026](guides/seo-master-playbook-2026.md)
@@ -223,14 +288,15 @@ Layer 1: Infrastructure
 4. **Build topical authority**: Use [Topical Maps & Clustering](guides/topical-maps-and-clustering.md)
 5. **Optimize for AI search**: Read [GEO/AEO/LLMO Research](research/seo-geo-aeo-llmo-research-2026.md)
 6. **Automate**: Set up workflows with [N8N SEO Automation](guides/n8n-seo-automation.md)
+7. **Use skills**: Run any `/skill-name` in Claude Code for instant marketing frameworks
 
 ---
 
 ## Stats
 
+- **35 marketing skills** covering SEO, CRO, content, ads, growth, and revenue
 - **11 comprehensive guides** covering every SEO discipline
-- **19 tool repositories** included (audit, schema, crawling, tracking)
-- **50+ recommended repos** identified for expansion
+- **52 tool repositories** (audit, schema, crawling, tracking, AI SEO)
 - **6 learning platforms** linked for continuous education
 - **46KB of AI search research** (GEO/AEO/LLMO)
 - **383KB+ of battle-tested playbooks**
