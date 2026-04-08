@@ -1,0 +1,19 @@
+{
+	"presets": [
+		[
+			"@babel/preset-env",
+			{
+				"targets": {
+					"browsers": [ "extends @yoast/browserslist-config" ]
+				}
+			}
+		]
+	],
+	"env": {
+		"test": {
+			"plugins": [
+				"babel-plugin-styled-components"
+			]
+		}
+	}
+}

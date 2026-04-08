@@ -1,0 +1,112 @@
+/* eslint-disable complexity */
+// Duplicated from admin-ui! ( admin-ui/packages/toolkit/components/alert.js )
+// Addition: "success" case, fade in alert.
+
+import { CheckCircleIcon, ExclamationIcon, InformationCircleIcon, XCircleIcon } from "@heroicons/react/solid";
+import { useCallback, useState } from "@wordpress/element";
+import classNames from "classnames";
+import PropTypes from "prop-types";
+import AnimateHeight from "react-animate-height";
+
+/**
+ * Renders the alert component.
+ *
+ * @param {string} [type="info"] The type of the alert.
+ * @param {React.ReactNode} children The content of the alert.
+ * @param {string} [className=""] The class name for the alert.
+ * @returns {JSX.Element} The Alert.
+ */
+export default function Alert( { type = "info", children, className = "" } ) {
+	let icon;
+	let color;
+
+	switch ( type ) {
+		case "info":
+			icon = <InformationCircleIcon aria-hidden="true" className="yst-flex-shrink-0 yst-w-5 yst-h-5 yst-text-blue-500" />;
+			color = "yst-bg-blue-100 yst-text-blue-800";
+			break;
+		case "warning":
+			icon = <ExclamationIcon aria-hidden="true" className="yst-flex-shrink-0 yst-w-5 yst-h-5 yst-text-yellow-500" />;
+			color = "yst-bg-yellow-100 yst-text-yellow-800";
+			break;
+		case "error":
+			icon = <XCircleIcon aria-hidden="true" className="yst-flex-shrink-0 yst-w-5 yst-h-5 yst-text-red-500" />;
+			color = "yst-bg-red-100 yst-text-red-800";
+			break;
+		case "success":
+			icon = <CheckCircleIcon aria-hidden="true" className="yst-flex-shrink-0 yst-w-5 yst-h-5 yst-text-emerald-600" />;
+			color = "yst-bg-green-100 yst-text-green-800";
+			break;
+	}
+
+	return (
+		<div className={ classNames( "yst-flex yst-p-4 yst-rounded-md", color, className ) }>
+			{ icon }
+			<div className="yst-flex-1 yst-ms-3 yst-text-sm">
+				{ children }
+			</div>
+		</div>
+	);
+}
+
+Alert.propTypes = {
+	type: PropTypes.oneOf( [ "info", "warning", "error", "success" ] ),
+	children: PropTypes.oneOfType( [
+		PropTypes.arrayOf( PropTypes.node ),
+		PropTypes.node,
+	] ).isRequired,
+	className: PropTypes.string,
+};
+
+/**
+ * An Alert that expands and fades in.
+ *
+ * @param {string} id The id for the alert.
+ * @param {boolean} isVisible Whether the alert is visible.
+ * @param {number} [expandDuration=400] The expand animation duration.
+ * @param {string} [type="info"] The type of the alert.
+ * @param {React.ReactNode} children The content of the alert.
+ * @param {string} [className=""] The class name for the alert.
+ *
+ * @returns {JSX.Element} An Alert that expands and fades in.
+ */
+export function FadeInAlert( {
+	id,
+	isVisible,
+	expandDuration = 400,
+	type = "info",
+	children,
+	className = "",
+} ) {
+	const [ alertOpacity, setAlertOpacity ] = useState( isVisible ? "yst-opacity-100" : "yst-opacity-0" );
+	const startOpacityTransition = useCallback( () => {
+		setAlertOpacity( "yst-opacity-100" );
+	}, [] );
+
+	return <AnimateHeight
+		id={ id }
+		height={ isVisible ? "auto" : 0 }
+		easing="linear"
+		duration={ expandDuration }
+		onAnimationEnd={ startOpacityTransition }
+	>
+		<Alert
+			type={ type }
+			className={ classNames( "yst-transition-opacity yst-duration-300 yst-mt-4", alertOpacity, className ) }
+		>
+			{ children }
+		</Alert>
+	</AnimateHeight>;
+}
+
+FadeInAlert.propTypes = {
+	id: PropTypes.string.isRequired,
+	isVisible: PropTypes.bool.isRequired,
+	type: PropTypes.oneOf( [ "info", "warning", "error", "success" ] ),
+	children: PropTypes.oneOfType( [
+		PropTypes.arrayOf( PropTypes.node ),
+		PropTypes.node,
+	] ).isRequired,
+	expandDuration: PropTypes.number,
+	className: PropTypes.string,
+};

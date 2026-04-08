@@ -1,0 +1,50 @@
+{
+	"name": "sybrew/the-seo-framework",
+	"description": "An automated, advanced, accessible, unbranded and extremely fast SEO solution for any WordPress website.",
+	"keywords": [
+		"seo",
+		"wordpress",
+		"plugin"
+	],
+	"type": "wordpress-plugin",
+	"license": "GPL-3.0-only",
+	"homepage": "https://theseoframework.com/",
+	"authors": [
+		{
+			"name": "Sybre Waaijer",
+			"email": "sybrew@users.noreply.github.com",
+			"homepage": "https://cyberwire.nl/",
+			"role": "Developer"
+		}
+	],
+	"require": {
+		"php": "~7.4 || ^8.0 || ^8.1 || ^8.2 || ^8.3 || ^8.4",
+		"composer/installers": "^1.0 || ^2.0"
+	},
+	"require-dev": {
+		"dealerdirect/phpcodesniffer-composer-installer": "1.0.0",
+		"theseoframework/wpcs-tsf": "1.2.0",
+		"sirbrillig/phpcs-variable-analysis": "2.11.16",
+		"phpcompatibility/phpcompatibility-wp": "2.1.4"
+	},
+	"scripts": {
+		"php:compatibility": "composer install && vendor/bin/phpcs -p -s --runtime-set testVersion '5.2-' --standard=PHPCompatibilityWP --ignore=docker,tools,tests,node_modules,vendor --extensions=php",
+		"php:lint": "composer install && vendor/bin/phpcs -p -s",
+		"php:autofix": "composer install && vendor/bin/phpcbf",
+		"php:lint:errors": "composer install && vendor/bin/phpcs -p -s --runtime-set ignore_warnings_on_exit 1",
+		"makepot": "wp i18n make-pot . language/autodescription.pot --slug=autodescription"
+	},
+	"support": {
+		"docs": "https://theseoframework.com/docs/",
+		"forum": "https://wordpress.org/support/plugin/autodescription/",
+		"wiki": "https://github.com/sybrew/the-seo-framework/wiki"
+	},
+	"minimum-stability": "dev",
+	"prefer-stable": true,
+	"config": {
+		"allow-plugins": {
+			"composer/installers": true,
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		}
+	}
+}

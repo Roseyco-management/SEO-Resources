@@ -1,0 +1,44 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.ts'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+  
+    services:
+      ftp:
+        image: delfer/alpine-ftp-server:latest
+        ports:
+          - 21:21
+          - 21000-21010:21000-21010
+        options: >-
+          --name test-ftp-server
+          --env USERS=one|1234
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4.0.2
+        with:
+          node-version: '20'
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn
+
+      - name: Confidential step
+        env:
+          GSERV: ${{ secrets.GSERV }}
+        run: |
+          echo "$GSERV" > test/test-sample/gserv.json
+
+      - name: Run tests
+        run: yarn ci-test

@@ -1,0 +1,1142 @@
+<?php
+
+/***************************************************************************
+ *   Copyright (C) 2009-2011 by Geo Varghese(www.seopanel.org)  	   *
+ *   sendtogeo@gmail.com   												   *
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   This program is distributed in the hope that it will be useful,       *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU General Public License     *
+ *   along with this program; if not, write to the                         *
+ *   Free Software Foundation, Inc.,                                       *
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ ***************************************************************************/
+
+# func to format error message
+function formatErrorMsg($msg, $class='error', $star=""){
+	if(!empty($msg)){
+		$iconHtml = '<i class="fas fa-exclamation-circle"></i> ';
+		$msg = "<span class='$class'>{$iconHtml}{$msg}</span>";
+	}
+	return $msg;
+}
+
+# func to format success message
+function formatSuccessMsg($msg, $class='success'){
+	if(!empty($msg)){
+		$iconHtml = '<i class="fas fa-check-circle"></i> ';
+		$msg = "<span class='$class'>{$iconHtml}{$msg}</span>";
+	}
+	return $msg;
+}
+
+# func to redirect url
+function redirectUrl($url) {
+	header("Location: $url");
+	exit;
+}
+
+# func to redirect url
+function redirectUrlByScript($url) {
+	print "<script>window.location='$url';</script>";
+}
+
+# func to hide div
+function hideDiv($divId) {
+	print "<script>hideDiv('$divId')</script>";
+}
+
+
+# func to show div
+function showDiv($divId) {
+	print "<script>showDiv('$divId')</script>";
+	exit;
+}
+
+# func to show no results
+function showNoRecordsList($colspan, $msg='', $plain=false) {
+	$msg = empty($msg) ? $_SESSION['text']['common']['No Records Found'] : $msg;
+	$data['colspan'] = $colspan;
+	$data['msg'] = $msg;
+	$data['plain'] = $plain;
+	return @View::fetchViewFile('common/norecords', $data);
+}
+
+# func to show error msg
+function showErrorMsg($errorMsg, $exit=true, $return = false) {
+	$data['errorMsg'] = $errorMsg;
+	
+	// if return is set
+	if ($return && !$exit) {
+		return @View::fetchViewFile('common/error', $data);
+	} else {
+		print @View::fetchViewFile('common/error', $data);
+		if($exit) exit;
+	}
+}
+
+# func to show success msg
+function showSuccessMsg($successMsg, $exit=true) {
+	$data['successMsg'] = $successMsg;
+	print @View::fetchViewFile('common/success', $data);
+	if($exit) exit;
+}
+
+# func to show success msg
+function showWarningMsg($warningMsg, $exit=true) {
+    $warningHtml = '<div class="alert alert-warning">
+	                   <button type="button" class="close" data-dismiss="alert">&times;</button>
+                       ' . $warningMsg . '
+                    </div>';
+    print $warningHtml;
+    if($exit) {
+        exit;
+    }
+}
+
+# func to show no results
+function showSectionHead($sectionHead) {
+	$data['sectionHead'] = $sectionHead;
+	return @View::fetchViewFile('common/sectionHead', $data);
+}
+
+# function to check whether user logged in
+function checkLoggedIn() {
+	$userInfo = @Session::readSession('userInfo');
+	if(empty($userInfo['userId'])){
+		redirectUrlByScript(SP_WEBPATH."/login.php");
+		exit;
+	}
+	
+	// check whethere user expired, then redirect to subscribe page
+	$userCtrl = New UserController();
+	if (!$userCtrl->isUserExpired($userInfo['userId'])) {
+		redirectUrl(SP_WEBPATH."/admin-panel.php?sec=myprofile&expired=1");
+	}
+}
+
+# function to check whether admin logged in
+function checkAdminLoggedIn() {
+	$userInfo = @Session::readSession('userInfo');
+	if(empty($userInfo['userType']) || ($userInfo['userType'] != 'admin') ) {
+		redirectUrlByScript(SP_WEBPATH."/login.php");
+		exit;
+	}
+}
+
+# function to user is admin or not
+function isAdmin() {
+	$userInfo = @Session::readSession('userInfo');
+	return ($userInfo['userType'] == 'admin') ? $userInfo['userId'] : false;
+}
+
+# function to user logged in or not
+function isLoggedIn() {
+	$userInfo = @Session::readSession('userInfo');
+	return empty($userInfo['userId']) ? false : $userInfo['userId'];
+}
+
+# function to chekc quick checker enabled for user
+function isQuickCheckerEnabled() {
+	$enabled = (isAdmin() || !SP_HOSTED_VERSION) ? true : false;
+	return $enabled;
+}
+
+# get functions
+function scriptGetAJAXLink($file, $area, $args='', $trigger='OnClick'){
+	$link = ' '.$trigger.'="scriptDoLoad('."'$file', '$area', '$args')".'"';
+	return $link;
+}
+
+function confirmScriptAJAXLink($file,$area,$trigger='OnClick'){
+	$link = ' '.$trigger.'="confirmLoad('."'$file', '$area', '$args')".'"';
+	return $link;
+}
+
+function scriptAJAXLinkHref($file, $area, $args='', $linkText='Click', $class='', $trigger='OnClick'){
+	if ($file == 'demo') {
+		$link = ' '.$trigger.'="alertDemoMsg()"';
+	} else {
+		$link = ' '.$trigger.'="scriptDoLoad('."'$file', '$area', '$args')".'"';		
+	}
+	
+	$link = "<a href='javascript:void(0);' class='$class' $link>$linkText</a>";
+	return $link;
+}
+
+function scriptAJAXLinkHrefDialog($file, $area, $args='', $linkText='Click', $class='', $trigger='OnClick', $widthVal=1100, $heightVal=600){
+	if ($file == 'demo') {
+		$link = ' '.$trigger.'="alertDemoMsg()"';
+	} else {
+		$link = ' '.$trigger.'="scriptDoLoadDialog('."'$file', '$area', '$args', $widthVal, $heightVal)".'"';		
+	}
+	
+	$link = "<a href='javascript:void(0);' class='$class' $link>$linkText</a>";
+	return $link;
+}
+
+function confirmScriptAJAXLinkHref($file, $area, $args='', $linkText='Click', $trigger='OnClick'){
+	$link = ' '.$trigger.'="confirmLoad('."'$file', '$area', '$args')".'"';
+	$link = "<a href='javascript:void(0);' class='$class' $link>$linkText</a>";
+	return $link;
+}
+
+#post functions
+function scriptPostAJAXLink($file, $form, $area, $trigger='OnClick'){
+	$link = ' '.$trigger.'="scriptDoLoadPost('."'$file', '$form', '$area')".'"';
+	return $link;
+}
+
+function confirmPostAJAXLink($file, $form, $area, $trigger='OnClick'){
+	$link = ' '.$trigger.'="confirmSubmit('."'$file', '$form', '$area')".'"';
+	return $link;
+}
+
+function formatUrl( $url, $removeWWW=true, $removeLastSlash=false) {
+	$url = str_replace('http://', '', $url);
+	$url = str_replace('https://', '', $url);
+	
+	// if ww needs to be removed
+	if ($removeWWW) {
+		$url = preg_replace('/^www./i', '', $url);
+	}
+	
+	if ($removeLastSlash) {
+	    $url = rtrim($url, '/');
+	}
+	
+	return $url;
+}
+
+function formatDate($date) {
+	$date = str_replace("0000-00-00", "", $date);
+	return $date;
+}
+
+function addHttpToUrl($url) {
+	if(!stristr($url, 'http://') && !stristr($url, 'https://')) {
+		$url = 'https://'.trim($url);
+	}
+	
+	return trim($url);
+}
+
+function isDomainUrl($url) {
+    $parsedUrl = parse_url($url);
+    
+    // Check if the URL has a scheme (e.g., http, https) and a host
+    return isset($parsedUrl['scheme']) && isset($parsedUrl['host']) && !isset($parsedUrl['path']);
+}
+
+function getMainDomainLink($url) {
+    $parsedUrl = parse_url($url);
+    $mainLink = "";
+    
+    // Check if the URL has a scheme (e.g., http, https) and a host
+    if (isset($parsedUrl['scheme']) && isset($parsedUrl['host'])) {
+        $mainLink = $parsedUrl['scheme'] . "://" . $parsedUrl['host'];
+    }
+    
+    return $mainLink;
+}
+
+function isImageFile($filename) {
+    // Get the file extension in lowercase
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    
+    // Convert the allowed types constant into an array
+    $allowedTypes = array_map('trim', explode(',', SP_IMG_FILE_TYPES));
+    
+    // Return true if extension is in the allowed types
+    return in_array($ext, $allowedTypes);
+}
+
+function generateFileNameFromTitle($title, $extension='txt', $maxChars=50) {
+    // Convert to lowercase
+    $title = strtolower($title);
+    
+    // Replace spaces and underscores with hyphens
+    $title = preg_replace('/[\s_]+/', '-', $title);
+    
+    // Remove all non-alphanumeric and non-hyphen characters
+    $title = preg_replace('/[^a-z0-9\-]/', '', $title);
+    
+    // Trim hyphens from beginning and end
+    $title = trim($title, '-');
+    
+    // Limit to 60 characters
+    $title = substr($title, 0, $maxChars);
+    
+    // Remove trailing hyphen if cut in the middle
+    $title = rtrim($title, '-');
+    
+    return $title . '.' . $extension;
+}
+
+function isPageUrl($url) {
+    $parsedUrl = parse_url($url);
+    
+    // Check if the URL has a scheme, a host, and a path (page)
+    return isset($parsedUrl['scheme']) && isset($parsedUrl['host']) && isset($parsedUrl['path']);
+}
+
+function formatFileName( $fileName ) {
+	$search = array(' ', '/', ':');
+	$replace = array('_', '', '');
+	$fileName = str_replace($search, $replace, $fileName);
+	return $fileName;
+}
+
+function formatCommaSeparatedString($commaStr) {
+    $parts = preg_split('/\s*,\s*/', $commaStr);
+    $parts = array_filter($parts);
+    $commaStr = implode(',', $parts);
+    return $commaStr;
+}
+
+function showActionLog($msg, $area='subcontent'){
+	echo "<script type='text/javascript'>updateArea('$area', '$msg')</script>";
+}
+
+//function to update perticular area using javascript
+function updateJsLocation($area, $text) {
+    echo "<script type='text/javascript'>document.getElementById('$area').innerHTML = '$text';</script>";
+}
+
+function loadGif ($imgname){
+	$im = @imagecreatefromgif ($imgname);
+	if (!$im) {
+		$im = imagecreatetruecolor (150, 30);
+		$bgc = imagecolorallocate ($im, 255, 255, 255);
+		$tc = imagecolorallocate ($im, 0, 0, 0);
+		imagefilledrectangle ($im, 0, 0, 150, 30, $bgc);
+		imagestring ($im, 1, 5, 5, "Error loading $imgname", $tc);
+	}
+	return $im;
+}
+
+# func to check whether logged in user having website
+function isHavingWebsite() {
+	$userId = isLoggedIn();
+	$websiteCtrl = New WebsiteController();
+	$count = isAdmin() ? $websiteCtrl->__getCountAllWebsites() : $websiteCtrl->__getCountAllWebsites($userId);
+	
+	if($count <= 0){
+		
+		// check for user website access option
+		if (SP_CUSTOM_DEV && !isAdmin()) {
+			$userCtrl = new UserController();
+			$accessCount = $userCtrl->getUserWebsiteAccessCount($userId);
+			if ($accessCount > 0) {
+				return $accessCount;
+			}
+		}
+		
+		redirectUrl(SP_WEBPATH."/admin-panel.php?sec=newweb");
+	}
+}
+
+# func to chekc s user have access to seo tool
+function isUserHaveAccessToSeoTool($urlSection, $showError = true) {
+
+	include_once(SP_CTRLPATH . "/seotools.ctrl.php");
+	$userTypeCtrler = new UserTypeController();
+	$userSessInfo = Session::readSession('userInfo');
+	$toolCtrler = new SeoToolsController();
+	$seoToolInfo = $toolCtrler->__getSeoToolInfo($urlSection, 'url_section');
+	$haveAccess = $userTypeCtrler->isUserTypeHaveAccessToSeoTool($userSessInfo['userTypeId'], $seoToolInfo['id']);
+	
+	// if show error and not have access
+	if ($showError && !$haveAccess) {
+		showErrorMsg($_SESSION['text']['label']['Access denied']);
+	}
+	
+	return $haveAccess;
+	
+}
+
+# function to create plugin ajax get method
+function pluginGETMethod($args='', $area='content', $dialog = false){
+	$script = "seo-plugins.php?pid=".PLUGIN_ID;
+	$scriptFunc = $dialog ? "scriptDoLoadDialog" : "scriptDoLoad";
+	$request = "$scriptFunc('$script', '$area', '$args')";
+	return $request;
+}
+
+# function to create plugin ajax post method
+function pluginPOSTMethod($formName, $area='content', $args='', $dialog = false){
+	$args = "&pid=".PLUGIN_ID."&$args";
+	$scriptFunc = $dialog ? "popupScriptDoLoadPostDialog" : "scriptDoLoadPost";
+	$request = "$scriptFunc('seo-plugins.php', '$formName', '$area', '$args')";
+	return $request;
+}
+
+# function to create plugin ajax confirm get method
+function pluginConfirmGETMethod($args='', $area='content'){
+	$script = "seo-plugins.php?pid=".PLUGIN_ID;	
+	$request = "confirmLoad('$script', '$area', '$args')";
+	return $request;
+}
+
+# function to create plugin ajax confirm post method
+function pluginConfirmPOSTMethod($formName, $area='content', $args=''){
+	$args = "&pid=".PLUGIN_ID."&$args";
+	$request = "confirmSubmit('seo-plugins.php', '$formName', '$area', '$args')";
+	return $request;
+}
+
+# func to create plugin menu
+function pluginMenu($args='', $area='content') {
+    $pluginId = Session::readSession('plugin_id');
+    $script = "seo-plugins.php?pid=".$pluginId;
+    $request = "scriptDoLoad('$script', '$area', '$args')";
+    return $request;
+}
+
+function pluginLink($args = '') {
+    $script = SP_WEBPATH . "/seo-plugins.php?pid=" . PLUGIN_ID;
+    $script .= (substr($args, 0, 1) == '&') ? $args : "&$args";
+    return $script;
+}
+
+# func to remove new lines from a string
+function removeNewLines($value) {
+	$value = preg_replace('/[\r\n]*/', '', $value);
+	$value = preg_replace('/[\r\n]+/', '', $value);
+	return $value;
+}
+
+# func to get current url
+function getCurrentUrl() {
+    
+    // to fix the issues with IIS
+    if (!isset($_SERVER['REQUEST_URI'])) {
+        $_SERVER['REQUEST_URI'] = substr($_SERVER['PHP_SELF'],1 );
+        if (isset($_SERVER['QUERY_STRING'])) {
+            $_SERVER['REQUEST_URI'].='?'.$_SERVER['QUERY_STRING'];
+        }
+    }
+    
+	$reqUrl = $_SERVER['REQUEST_URI'];
+	$protocol = empty($_SERVER['HTTPS']) ? "http://" : "https://";
+	$port = empty($_SERVER['SERVER_PORT']) ?  "" : (int) $_SERVER['SERVER_PORT'];
+	$host =  strtolower($_SERVER['HTTP_HOST']);
+	if(!empty($port) && ($port <> 443) && ($port <> 80)){
+		if(strpos($host, ':') === false){ $host .= ':' . $port; }
+	}
+	$webPath = $protocol.$host.$reqUrl;
+	return $webPath;
+}
+
+# function to check whether refferer is from same site
+function isValidReferer($referer) {
+	
+	if(stristr($referer, SP_WEBPATH)) {
+		if (!stristr($referer, 'install') && !stristr($referer, 'login.php')) {
+			$referer = str_ireplace("&lang_code=", "&", $referer);
+			return $referer;
+		}		
+	}
+	return '';
+}
+
+# func to create export content
+function createExportContent($list) {
+	return '"'.implode('","',$list)."\"\r\n"; 
+}
+
+# func to export data to csv file
+function exportToCsv($fileName, $content) {
+	
+	$fileName = $fileName."_".date("Y-m-d",time());
+	header("Content-type: application/vnd.ms-excel");
+	header("Content-disposition: csv" . date("Y-m-d") . ".csv");
+	header( "Content-disposition: filename=".$fileName.".csv");
+	print $content;
+	exit; 
+}
+
+# func to show printer hearder
+function showPrintHeader($headMsg='', $doPrint=true) {
+    ?>
+    <!doctype html>
+	<html lang="en">
+	<head>
+    	<meta charset="utf-8">
+    	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    	<script type="text/javascript">
+			<?php if ($doPrint) { ?>
+				window.print();
+			<?php }?>
+		</script>		
+	    <style type="text/css">
+		    <?php echo readFileContent(SP_THEME_ABSPATH . "/css/screen.css"); ?>
+	    </style>    
+    </head>
+    <body>
+	<?php
+	if (!empty($headMsg)) echo showSectionHead($headMsg);
+}
+
+# func to read file content
+function readFileContent($fileName) {
+	$handle = fopen($fileName, "r");
+	$cfgData = fread($handle, filesize($fileName));
+	fclose($handle);
+	return $cfgData;
+}
+
+# func to show printer footer
+function showPrintFooter($spText) {
+	$custSiteInfo = getCustomizerDetails();
+	if (!empty($custSiteInfo['footer_copyright'])) {
+		$copyrightTxt = str_replace('[year]', date('Y'), $custSiteInfo['footer_copyright']);
+	} else {
+		$copyrightTxt = str_replace('[year]', date('Y'), $spText['common']['copyright']);
+	}
+    ?>
+    <div class="center footer-sp"><?php echo $copyrightTxt;?></div>
+    </body>
+    </html>
+	<?php
+}
+
+# func to debug the variables
+function debugVar($value, $exitFlag = true) {
+    echo "<pre>";print_r($value);echo "</pre>";
+    
+    // if exit flag set terminate execution
+    if ($exitFlag) {
+		exit;
+	}
+    
+}
+
+# func to send mail
+function sendMail($from, $fromName, $to ,$subject,$content, $attachment = ''){
+	$mail = new PHPMailer();
+	$mail->CharSet = 'UTF-8';
+	
+	# check whether the mail send by smtp or not
+	if(SP_SMTP_MAIL){
+		$mail->IsSMTP();	
+		$mail->SMTPAuth = true;
+		$mail->Host = SP_SMTP_HOST;
+		$mail->Username = SP_SMTP_USERNAME;
+		$mail->Password = SP_SMTP_PASSWORD;
+		$mail->Port = SP_SMTP_PORT;
+		
+		// if mail encryption enabled
+		if (defined('SP_MAIL_ENCRYPTION') && (SP_MAIL_ENCRYPTION != '')) {
+            $mail->SMTPSecure = SP_MAIL_ENCRYPTION;
+		}		
+	}
+
+	$mail->From = $from;
+	$mail->FromName = $fromName;
+	$mail->AddAddress($to);
+	$mail->WordWrap = 70;                              
+	$mail->IsHTML(true);
+
+	$mail->Subject = $subject;
+	$mail->Body = $content;
+	$mail->msgHTML($content); //creates plaintext alternate automatically
+	$mail->AltBody = 'To view the message, please use an HTML compatible email viewer!'; //fallback
+	
+	// if attachments are there
+	if (!empty($attachment)) {
+		$mail->AddAttachment($attachment);
+	}
+	
+	$mailLogInfo = [];
+	
+	// if sendgrid api should be used, if enabled it
+	if ($mail->Host == 'smtp.sendgrid.net' && SP_SENDGRID_API) {
+		$sendLog = sendMailBySendgridAPI($mail, $to);
+		$mailLogInfo['mail_category'] = 'sendgrid';
+	} else {
+	
+		// normal mail send fails or not
+		if($mail->Send()){
+			$sendLog['status'] = 1;
+			$sendLog['log_message'] = "Success";
+		} else {
+			$sendLog['status'] = 0;
+			$sendLog['log_message'] = $mail->ErrorInfo;
+		}
+		
+	}
+	
+	// update mail log
+	$crawlLogCtrl = new CrawlLogController();	
+	$mailLogInfo['subject'] = $subject;
+	$mailLogInfo['from_address'] = $from;
+	$mailLogInfo['to_address'] = $to;
+	$mailLogInfo['status'] = $sendLog['status'];
+	$mailLogInfo['log_message'] = $sendLog['log_message'];
+	$crawlLogCtrl->createMailLog($mailLogInfo);
+	
+	return $sendLog['status'];
+	
+}
+
+function sendMailBySendgridAPI($mail, $subscriberEmail, $subscriberName = '') {
+	
+	include_once(SP_LIBPATH . "/sendgrid-php/sendgrid-php.php");
+	$from = new SendGrid\Email($mail->FromName, $mail->From);
+	$subject = $mail->Subject;
+	$to = new SendGrid\Email($subscriberName, $subscriberEmail);
+	$content = new SendGrid\Content($mail->ContentType, $mail->Body);
+	$apiKey = $mail->Password;
+	$mail = new SendGrid\Mail($from, $subject, $to, $content);
+	$sg = new \SendGrid($apiKey);
+	$response = $sg->client->mail()->send()->post($mail);
+	 
+	$statusCode = $response->statusCode();
+	if (in_array($statusCode, array("202", "200"))) {
+		$sendLog['status'] = 1;
+		$sendLog['log_message'] = "Success";
+	} else {
+		$sendLog['status'] = 0;
+		$sendLog['log_message'] = $response->body();
+	}
+	 
+	return $sendLog;
+	 
+}
+
+
+# func to sanitize data to prevent attacks
+function sanitizeData($data, $stripTags=true, $addSlashes=false) {
+    
+    if (is_array($data)) {
+        foreach ($data as $col => $val) {
+
+            if ( ($col == 'password') ||  ($col== 'confirmPassword') ) {
+                continue;
+            }
+            
+            if ($stripTags) {
+                $val = strip_tags($val);
+            } 
+            
+            if ($addSlashes) {
+                $val = addslashes($val);
+            }
+            
+            $data[$col] = $val;
+        }
+    } else {
+        if ($stripTags) {
+            $data = strip_tags($data);
+        } 
+        
+        if ($addSlashes) {
+            $data = addslashes($data);
+        }
+    }
+    return $data;
+}
+
+# func to get rounded tab top
+function getRoundTabTop(){
+	
+	$content = '
+		<b class="round_border">
+			<b class="round_border_layer3"></b>
+			<b class="round_border_layer2"></b>
+			<b class="round_border_layer1"></b>
+		</b>
+	';
+	return $content;
+}
+
+# func to get rounded tab bottom
+function getRoundTabBot(){
+	
+	$content = '
+		<b class="round_border">
+			<b class="round_border_layer1"></b>
+			<b class="round_border_layer2"></b>
+			<b class="round_border_layer3"></b>
+		</b>
+	';
+	return $content;
+}
+
+# function to convert to pdf  from view file
+function exportToPdf($content, $fileName = "reports.pdf") {
+    include_once(SP_LIBPATH . "/mpdf_lib/vendor/autoload.php");
+    $mpdf = new \Mpdf\Mpdf([
+        'tempDir' => SP_TMPPATH,
+        'defaultCssFile' => SP_THEME_ABSPATH . "/css/screen.css",
+    ]);
+
+    $mpdf->autoScriptToLang = true;
+    $mpdf->autoLangToFont = true;
+    $mpdf->SetDisplayMode('fullpage');
+    $mpdf->WriteHTML($content, \Mpdf\HTMLParserMode::HTML_BODY);
+    $mpdf->Output($fileName, "I");
+    exit;
+}
+
+# func to show pdf header
+function showPdfHeader($headMsg = '') {
+	?>
+    <head>
+    	<meta content="text/html; charset=UTF-8" http-equiv="content-type" />
+    </head>
+	<?php
+	if (!empty($headMsg)) echo showSectionHead($headMsg);
+}
+
+# func to show pdf footer
+function showPdfFooter($spText) {
+	$custSiteInfo = getCustomizerDetails();
+	if (!empty($custSiteInfo['footer_copyright'])) {
+		$copyrightTxt = str_replace('[year]', date('Y'), $custSiteInfo['footer_copyright']);
+	} else {
+		$copyrightTxt = str_replace("www.seopanel.org", "<a href='https://www.seopanel.org'>www.seopanel.org</a>", $spText['common']['copyright']);
+	}
+    ?>
+    <div style="clear: both; margin-top: 30px;font-size: 12px; text-align: center;"><?php echo str_replace('[year]', date('Y'), $copyrightTxt)?></div>
+	<?php
+}
+
+# function to loop through the array values and change it to int or string
+function formatSQLParamList($paramList, $type = 'int') {
+	
+	foreach ($paramList as $key => $value) {
+		$paramList[$key] = ($type == 'int') ? intval($value) : addslashes($value);
+	}
+	
+	return $paramList;
+	
+}
+
+# function to find order by value to prevent sql injection
+function getOrderByVal($orderByVal) {
+	$orderByVal = (strtolower($orderByVal) == 'desc') ? "DESC" : "ASC";
+	return $orderByVal;
+}
+
+if (!function_exists('curl_reset')) {
+	
+	function curl_reset(&$ch) {
+		$ch = curl_init();
+	}
+	
+}
+
+function getRequestParamStr($requestType="REQUEST") {
+	$paramStr = "";
+	
+	$items = $_REQUEST;
+	if ($requestType == 'GET') {
+	    $items = $_GET;
+	} else if ($requestType == 'POST') {
+	    $items = $_POST;
+	}
+	
+	foreach ($items as $item => $value) {
+		$item = htmlentities($item, ENT_QUOTES);
+		$value = htmlentities($value, ENT_QUOTES);
+		$paramStr .= "&$item=" . urlencode($value);
+	}
+	
+	return $paramStr;
+	
+}
+
+// get dates in between a date range
+function getDateRange($first, $last, $step = '+1 day', $outputFormat = 'Y-m-d' ) {
+
+	$dates = array();
+	$current = strtotime($first);
+	$last = strtotime($last);
+
+	while( $current <= $last ) {
+		$dates[] = date($outputFormat, $current);
+		$current = strtotime($step, $current);
+	}
+
+	return $dates;
+}
+
+function getCustomizerDetails() {
+    $custSiteInfo = array();
+    
+    // check whetehr plugin installed or not
+    $seopluginCtrler = new SeoPluginsController();
+    if ($seopluginCtrler->isPluginActive("customizer")) {
+        $infoList = $seopluginCtrler->dbHelper->getAllRows("cust_site_details", "status=1");
+        foreach ($infoList as $info) $custSiteInfo[$info['col_name']] = $info['col_value'];
+        $custSiteInfo['plugin_active'] = 1;
+    }
+    
+    return $custSiteInfo;
+    
+}
+
+// function to get customizer pages[home,support,aboutus]
+function getCustomizerPage($pageName='home') {
+    $blogInfo = array();
+    $pageName = addslashes($pageName);
+    
+    // check whetehr plugin installed or not
+    $seopluginCtrler = new SeoPluginsController();
+    if ($seopluginCtrler->isPluginActive("customizer")) {
+        $langCode = !empty($_SESSION['lang_code']) ? $_SESSION['lang_code'] : "en";
+        $whereCond = "status=1 and link_page='$pageName'";
+        $blogInfo = $seopluginCtrler->dbHelper->getRow("cust_blogs", $whereCond . " and lang_code='$langCode'");
+        
+        // empty blog and language is not en, check en content
+        if (empty($blogInfo['id']) && ($langCode != 'en')) {
+            $blogInfo = $seopluginCtrler->dbHelper->getRow("cust_blogs", $whereCond . " and lang_code='en'");
+        }
+        
+        // if blog is not empty
+        if (!empty($blogInfo['blog_content'])) {
+            $blogInfo['blog_content'] = convertMarkdownToHtml($blogInfo['blog_content']);
+        }
+        
+    }
+    
+    return $blogInfo;
+    
+}
+
+// function to get customizer pages[guest,user,admin,top]
+function getCustomizerMenu($menuName) {
+	$controller = new Controller();		
+	$custComp = $controller->createComponent("Customizer_Helper");
+	return $custComp->getCustomizerMenu($menuName, $_SESSION['lang_code']);
+}
+
+function convertMarkdownToHtml($pageCont) {
+    include_once(SP_LIBPATH."/Parsedown.php");
+    $Parsedown = new Parsedown();
+    $pageCont = $Parsedown->text($pageCont);
+    return $pageCont;
+}
+
+function isPluginActivated($pluginName) {
+	$seopluginCtrler = new SeoPluginsController();
+	return $seopluginCtrler->isPluginActive($pluginName);
+}
+
+function formatNumber($number) {
+	$number = str_replace([",", " "], "", trim($number));
+	
+	if (stristr($number, 'K')) {
+		$number = str_replace("K", "", trim($number));
+		$number = $number * 1000;
+	}
+	
+	if (stristr($number, 'M')) {
+		$number = str_replace("M", "", trim($number));
+		$number = $number * 1000000;
+	}
+	
+	if (stristr($number, 'B')) {
+		$number = str_replace("B", "", trim($number));
+		$number = $number * 1000000000;
+	}
+	
+	return $number;
+}
+
+function showExportDiv($pdfLink, $csvLink, $printLink) {
+    ?>
+	<div class="export_div">
+		<a href="<?php echo $pdfLink?>" target="_blank"><i class="fas fa-file-pdf"></i></a>
+		<a href="<?php echo $csvLink?>"><i class="fas fa-file-csv"></i></a>
+		<a target="_blank" href="<?php echo $printLink?>"><i class="fas fa-print"></i></a>
+	</div>
+    <?php
+}
+
+function timeElapsedString($datetime, $full = false) {
+    $now = new DateTime;
+    $ago = new DateTime($datetime);
+    $diff = $now->diff($ago);
+    
+    $diff->w = floor($diff->d / 7);
+    $diff->d -= $diff->w * 7;
+    
+    $string = array(
+        'y' => $_SESSION['text']['label']['Year'],
+        'm' => $_SESSION['text']['label']['Month'],
+        'w' => $_SESSION['text']['label']['Week'],
+        'd' => $_SESSION['text']['label']['Day'],
+        'h' => $_SESSION['text']['label']['Hour'],
+        'i' => $_SESSION['text']['label']['Minute'],
+        's' => $_SESSION['text']['label']['Second'],
+    );
+    
+    foreach ($string as $k => &$v) {
+        if ($diff->$k) {
+            $v = $diff->$k . ' ' . $v . ($diff->$k > 1 ? 's' : '');
+        } else {
+            unset($string[$k]);
+        }
+    }
+    
+    if (!$full) $string = array_slice($string, 0, 1);
+    return $string ? implode(', ', $string) . ' '. $_SESSION['text']['label']['Ago'] : $_SESSION['text']['label']['Just Now'];
+}
+
+function createSelectList($list, $nameCol = 'name', $idCol = 'id' ) {
+    $newList = [];
+    foreach ($list as $listInfo) {
+        $newList[$listInfo[$idCol]] = ($nameCol== 'ALL') ? $listInfo : $listInfo[$nameCol];
+    }
+    
+    return $newList;
+}
+
+function createValueList($list, $colName='id') {
+    $newList = [];
+    
+    foreach ($list as $listInfo) {
+        $newList[] = $listInfo[$colName];
+    }
+    
+    return $newList;
+}
+
+function createSelectBoxFromList($optList, $nameAtr, $selectedVal, $emptySelectLabel="", $onChange="", $className='form-control') {
+    $selectStr = "<select name='$nameAtr' id='$nameAtr' class='$className' onChange=\"$onChange\">";
+    
+    if (!empty($emptySelectLabel)) {
+        $selectStr .= "<option value=''>-- $emptySelectLabel --</option>";
+    }
+    
+    foreach($optList as $optVal => $optLabel) {
+        $selected = ($optVal == $selectedVal) ? "selected" : "";
+        $selectStr .= "<option value='$optVal' $selected>$optLabel</option>";
+    }
+    
+    $selectStr .= "<select>";
+    return $selectStr;
+}
+
+function createSelectBox($optList, $nameAtr, $selectedVal, $labelCol='name', $idCol='id', $emptySelectLabel="", $onChange="", $className='form-control') {
+    
+    $multipleAttr = "";
+    if (stristr($nameAtr, ':')) {
+        list($nameAtr, $extraAttr) = explode(':', $nameAtr);
+        $multipleAttr = ($extraAttr == "multiple") ? 'multiple="multiple"' : "";
+    }
+    
+    $selectStr = "<select name='$nameAtr' id='$nameAtr' $multipleAttr class='$className' onChange=\"$onChange\">";
+    
+    if (!empty($emptySelectLabel)) {
+        $selectStr .= "<option value=''>-- $emptySelectLabel --</option>";
+    }
+    
+    foreach($optList as $optInfo) {
+        $optVal = $optInfo[$idCol];
+        $optLabel = ucwords($optInfo[$labelCol]);
+        $selected = ($optVal == $selectedVal) ? "selected" : "";
+        $selectStr .= "<option value='$optVal' $selected>$optLabel</option>";
+    }
+    
+    $selectStr .= "<select>";
+    return $selectStr;
+}
+
+function __assign($info, $col='id', $default="", $isset=false) {
+    if ($isset) {
+        return isset($info[$col]) ? $info[$col] : $default;
+    } else {
+        return !empty($info[$col]) ? $info[$col] : $default;
+    }
+}
+
+function showStatusBadge($statusVal, $badgeType="") {
+    $spText = $_SESSION['text'];
+    $statusClass = "badge bg-danger";    
+    switch ($badgeType) {        
+        case "yesno":
+            $statusLabel = $spText['common']["No"];
+            break;
+            
+        case "successfail":
+            $statusLabel = $spText['label']["Fail"];
+            break;
+            
+        default:            
+            $statusLabel = $spText['common']["Inactive"];
+            break;
+    }
+    
+    if (!empty($statusVal)) {
+        $statusClass = "badge bg-success";        
+        switch ($badgeType) {
+            case "yesno":
+                $statusLabel = $spText['common']["Yes"];
+                break;
+                
+            case "successfail":
+                $statusLabel = $spText['label']["Success"];
+                break;
+                
+            default:
+                $statusLabel = $spText['common']["Active"];
+                break;
+        }
+        
+    }
+    
+    $statusHtml = "<span class='$statusClass py-2 px-3 text-light'>$statusLabel</span>";
+    return  $statusHtml;
+}
+
+function generateUuidV4() {
+    return sprintf(
+        '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+        mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+        mt_rand(0, 0xffff),
+        mt_rand(0, 0x0fff) | 0x4000, // version 4
+        mt_rand(0, 0x3fff) | 0x8000, // variant
+        mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+    );
+}
+
+/**
+ * Get color class for spam score based on risk level
+ * @param float $score Spam score (0-100)
+ * @return string CSS class name
+ */
+function getSpamScoreColor($score) {
+    $score = floatval($score);
+    if ($score <= 30) {
+        return 'success'; // Green - Low risk
+    } elseif ($score <= 60) {
+        return 'warning'; // Yellow/Orange - Medium risk
+    } else {
+        return 'danger'; // Red - High risk
+    }
+}
+
+/**
+ * Get color class for Domain/Page Authority based on strength
+ * @param float $score DA or PA score (0-100)
+ * @return string CSS class name
+ */
+function getAuthorityColor($score) {
+    $score = floatval($score);
+    if ($score <= 20) {
+        return 'danger'; // Red - Weak
+    } elseif ($score <= 50) {
+        return 'warning'; // Yellow - Moderate
+    } elseif ($score <= 70) {
+        return 'info'; // Blue - Strong
+    } else {
+        return 'success'; // Green - Very strong
+    }
+}
+
+/**
+ * Get spam score risk level label
+ * @param float $score Spam score (0-100)
+ * @return string Risk level label
+ */
+function getSpamScoreLabel($score) {
+    $score = floatval($score);
+    if ($score <= 30) {
+        return 'Low Risk';
+    } elseif ($score <= 60) {
+        return 'Medium Risk';
+    } else {
+        return 'High Risk';
+    }
+}
+
+/**
+ * Get authority strength label
+ * @param float $score DA or PA score (0-100)
+ * @return string Strength label
+ */
+function getAuthorityLabel($score) {
+    $score = floatval($score);
+    if ($score <= 20) {
+        return 'Weak';
+    } elseif ($score <= 50) {
+        return 'Moderate';
+    } elseif ($score <= 70) {
+        return 'Strong';
+    } else {
+        return 'Very Strong';
+    }
+}
+
+/**
+ * Detect CAPTCHA or bot detection challenges in page content
+ * Common function used across review manager and social media checker
+ *
+ * @param string $pageContent The HTML content of the page
+ * @param int $pageLength Optional page length (will be calculated if not provided)
+ * @return array Array with 'detected' boolean and 'message' string
+ */
+function detectCaptchaChallenge($pageContent, $pageLength = null) {
+    $result = array(
+        'detected' => false,
+        'message' => ''
+    );
+
+    // Calculate page length if not provided
+    if ($pageLength === null) {
+        $pageLength = strlen($pageContent);
+    }
+
+    // Check for explicit CAPTCHA indicators combined with small page size
+    // Small page size (< 1500 chars) combined with captcha patterns indicates blocking
+    if ($pageLength < 1500 && (
+        stripos($pageContent, 'captcha-delivery.com') !== false ||
+        (stripos($pageContent, 'Please enable JS') !== false &&
+         stripos($pageContent, 'disable any ad blocker') !== false) ||
+        stripos($pageContent, 'verify you are human') !== false ||
+        stripos($pageContent, 'robot') !== false ||
+        stripos($pageContent, 'recaptcha') !== false ||
+        stripos($pageContent, 'cloudflare') !== false
+    )) {
+        $result['detected'] = true;
+        $result['message'] = "Bot detection or CAPTCHA challenge detected. The website may be blocking automated requests. Please try accessing the URL directly in a browser or consider using official APIs for this platform.";
+    }
+
+    return $result;
+}
+
+/**
+ * Detect browser blocking patterns (specifically for social platforms like Facebook)
+ *
+ * @param string $pageContent The HTML content of the page
+ * @return array Array with 'detected' boolean and 'message' string
+ */
+function detectBrowserBlocking($pageContent) {
+    $result = array(
+        'detected' => false,
+        'message' => ''
+    );
+
+    // Check for common browser blocking patterns
+    if (stripos($pageContent, 'Unsupported browser') !== false ||
+        stripos($pageContent, 'Facebook is not available on this browser') !== false ||
+        stripos($pageContent, 'browser is not supported') !== false) {
+        $result['detected'] = true;
+        $result['message'] = "Browser not supported. The platform blocks automated access. Please use official APIs for reliable data access.";
+    }
+
+    return $result;
+}
+?>

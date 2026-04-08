@@ -1,0 +1,62 @@
+{
+  "name": "react-schemaorg",
+  "version": "2.0.0",
+  "displayName": "React: Schema.org",
+  "description": "Typed Schema.org JSON-LD in React",
+  "authors": [
+    "Eyas Sharaiha <eyas@google.com> (https://eyas.sh/)"
+  ],
+  "maintainers": [
+    "Eyas Sharaiha <npm@eyas.sh> (https://eyas.sh/)"
+  ],
+  "types": "./dist/src/index.d.ts",
+  "main": "./dist/src/index.js",
+  "devDependencies": {
+    "@babel/plugin-transform-react-jsx": "^7.17.3",
+    "@babel/preset-env": "^7.16.11",
+    "@babel/preset-typescript": "^7.16.7",
+    "@types/jest": "^27.4.1",
+    "@types/react": "^17.0.43",
+    "@types/react-test-renderer": "^17.0.1",
+    "jest": "^27.5.1",
+    "prettier": "^2.6.1",
+    "react": "^17.0.2",
+    "react-test-renderer": "^17.0.2",
+    "schema-dts": "^1.1.0",
+    "typescript": "^4.6.3"
+  },
+  "peerDependencies": {
+    "react": ">=16.3.0",
+    "schema-dts": ">=0.7.4",
+    "typescript": ">=3.1.6"
+  },
+  "keywords": [
+    "react",
+    "jsonld",
+    "JSON-LD",
+    "typescript",
+    "schema.org",
+    "Semantic Web",
+    "semantic-web",
+    "Linked Data",
+    "linked-data",
+    "react-helmet",
+    "helmet",
+    "script",
+    "seo"
+  ],
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "scripts": {
+    "lint": "prettier --check \"src/**/*\" \"test/**/*\" \"type-test/**/*\"",
+    "fix": "prettier --write \"src/**/*\" \"test/**/*\" \"type-test/**/*\"",
+    "test": "npm run lint && tsc --build type-test/ && jest",
+    "build": "tsc --build .",
+    "prepare": "npm run build"
+  },
+  "homepage": "https://github.com/google/react-schemaorg#readme",
+  "bugs": "https://github.com/google/react-schemaorg/issues",
+  "repository": "github:google/react-schemaorg",
+  "license": "Apache-2.0"
+}

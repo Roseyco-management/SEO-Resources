@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react",
+    "target": "es2019",
+    "lib": ["ES2019"],
+    "sourceMap": false,
+    "declaration": true,
+    "moduleResolution": "node",
+    "module": "commonjs",
+    "composite": true,
+    "outDir": "./dist",
+    "rootDir": "."
+  }
+}

@@ -1,0 +1,63 @@
+TYPES: #eg-0270 City, name
+
+PRE-MARKUP:
+
+<ruby lang="en">Worcester<rp>(</rp><rt lang="en-fonipa">/ˈwʊstɚ/</rt><rp>)</rp></ruby>
+
+MICRODATA:
+
+TODO
+
+RDFA:
+
+TODO
+
+JSON:
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org/",
+  "@type": "City",
+  "name": [{
+    "@value": "Worcester",
+    "@language": "en"
+  }, {
+    "@value": "/ˈwʊstɚ/",
+    "@language": "en-fonipa"
+  }]
+}
+</script>
+
+TYPES: #eg-0271 RadioStation, name
+
+PRE-MARKUP:
+
+<span aria-label="W K R P">WKRP</span>
+
+MICRODATA:
+
+TODO
+
+RDFA:
+
+TODO
+
+JSON:
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org/",
+  "@type": "RadioStation",
+  "name": [
+    {
+      "@value": "WKRP",
+      "@language": "en"
+    },
+    {
+      "@value": "ˈdʌbəljuː ˈkeɪ ˈɑːr ˈpiː",
+      "@language": "en-fonipa"
+    }
+  ]
+}
+</script>
+

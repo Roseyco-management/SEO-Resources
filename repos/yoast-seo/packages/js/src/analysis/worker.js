@@ -1,0 +1,89 @@
+// External dependencies.
+import { get, merge } from "lodash";
+import { AnalysisWorkerWrapper, createWorker } from "yoastseo";
+
+// Internal dependencies.
+import getContentLocale from "./getContentLocale";
+import getDefaultQueryParams from "./getDefaultQueryParams";
+import isContentAnalysisActive from "./isContentAnalysisActive";
+import isKeywordAnalysisActive from "./isKeywordAnalysisActive";
+import isInclusiveLanguageAnalysisActive from "./isInclusiveLanguageAnalysisActive";
+import { enabledFeatures } from "@yoast/feature-flag";
+
+/**
+ * Instantiates an analysis worker (wrapper).
+ *
+ * @returns {AnalysisWorkerWrapper} The analysis worker.
+ */
+export function createAnalysisWorker() {
+	const url    = get( window, [ "wpseoScriptData", "analysis", "worker", "url" ], "analysis-worker.js" );
+	const worker = createWorker( url );
+	const dependencies = get( window, [ "wpseoScriptData", "analysis", "worker", "dependencies" ], [] );
+	const translations = [];
+
+	for ( const dependency in dependencies ) {
+		if ( ! Object.prototype.hasOwnProperty.call( dependencies, dependency ) ) {
+			continue;
+		}
+
+		/*
+		 * Extract the locale and translation data from the translations script to send off to the worker.
+		 *
+		 * Example translationElement:
+		 * <script id="yoast-seo-analysis-package-js-translations">
+		 * 	( function( domain, translations ) {
+		 * 		var localeData = translations.locale_data[ domain ] || translations.locale_data.messages;
+		 * 		localeData[ "" ].domain = domain;
+		 * 		wp.i18n.setLocaleData( localeData, domain );
+		 * 	} )( "wordpress-seo", { "locale_data": { "messages": { "": {} } } } );
+		 * </script>
+		 */
+		const translationElement = window.document.getElementById( `${dependency}-js-translations` );
+		if ( ! translationElement ) {
+			continue;
+		}
+		const text = translationElement.innerHTML.slice( 214 );
+		const split = text.indexOf( "," );
+		const domain = text.slice( 0, split - 1 );
+		try {
+			// Since WP 6.9 the translation script has some extra code at the end, we need to find the proper end of the JSON.
+			const endRegex = /}}\s*\);/;
+			const match = endRegex.exec( text );
+			// Find the end index of the JSON data, after the curly braces.
+			const jsonEnd = match.index + 2;
+			const translationData = JSON.parse( text.slice( split + 1, jsonEnd ) );
+			translations.push( [ domain, translationData ] );
+		} catch ( e ) {
+			console.warn( `Failed to parse translation data for ${dependency} to send to the Yoast SEO worker` );
+			continue;
+		}
+	}
+
+	worker.postMessage( {
+		dependencies,
+		translations,
+	} );
+
+	return new AnalysisWorkerWrapper( worker );
+}
+
+/**
+ * Retrieves the analysis configuration for the worker.
+ *
+ * @param {Object} [customConfiguration] The custom configuration to use.
+ *
+ * @returns {Object} The analysis configuration.
+ */
+export function getAnalysisConfiguration( customConfiguration = {} ) {
+	const configuration = {
+		locale: getContentLocale(),
+		contentAnalysisActive: isContentAnalysisActive(),
+		keywordAnalysisActive: isKeywordAnalysisActive(),
+		inclusiveLanguageAnalysisActive: isInclusiveLanguageAnalysisActive(),
+		defaultQueryParams: getDefaultQueryParams(),
+		logLevel: get( window, [ "wpseoScriptData", "analysis", "worker", "log_level" ], "ERROR" ),
+		enabledFeatures: enabledFeatures(),
+	};
+
+	return merge( configuration, customConfiguration );
+}

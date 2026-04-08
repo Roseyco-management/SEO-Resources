@@ -1,0 +1,9 @@
+__pycache__
+*.csv
+*.db
+*.db-journal
+*.gflaredb
+*.egg-info
+build/
+dist/
+Output/

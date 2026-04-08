@@ -1,0 +1,5 @@
+streamlit
+requests
+trafilatura
+pandas>=2.2.0
+nltk

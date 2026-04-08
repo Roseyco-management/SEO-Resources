@@ -1,0 +1,497 @@
+name: Release
+
+# Trigger: push a tag like v1.0.10
+on:
+  push:
+    tags:
+      - 'v*'
+  # Manual trigger for building artifacts only (no release created)
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g. 1.0.10)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.artifact_suffix }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact_suffix: linux-x64
+            archive: tar.gz
+
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact_suffix: linux-arm64
+            archive: tar.gz
+            cross: true
+
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact_suffix: macos-x64
+            archive: tar.gz
+
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            artifact_suffix: macos-arm64
+            archive: tar.gz
+
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact_suffix: win-x64
+            archive: zip
+
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            artifact_suffix: win-arm64
+            archive: zip
+
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            artifact_suffix: linux-musl-x64
+            archive: tar.gz
+            musl: true
+
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            artifact_suffix: linux-musl-arm64
+            archive: tar.gz
+            cross: true
+            musl: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Extract from tag: v1.0.10 -> 1.0.10
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${VERSION}"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross (for cross-compilation)
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Install musl tools
+        if: matrix.musl && !matrix.cross
+        run: sudo apt-get install -y musl-tools
+
+      - name: Update version in source
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DATE_SUFFIX="$(date +%Y%m%d)"
+          VERSION_CODE="${VERSION}.${DATE_SUFFIX}"
+
+          # Update Cargo.toml
+          sed -i.bak "s/^version = .*/version = \"${VERSION}\"/" Cargo.toml
+
+          # Update version.rs
+          sed -i.bak "s/^pub const CODE: .*/pub const CODE: \&str = \"${VERSION_CODE}\";/" src/version.rs
+
+          echo "Cargo.toml version: ${VERSION}"
+          echo "version.rs CODE: ${VERSION_CODE}"
+
+      - name: Build
+        shell: bash
+        run: |
+          if [[ "${{ matrix.cross }}" == "true" ]]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      # ── macOS Code Signing & Notarization ──────────────────────────
+      - name: Import Apple certificate
+        if: runner.os == 'macOS'
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH="$RUNNER_TEMP/certificate.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
+
+          echo -n "$CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$CERTIFICATE_PATH" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH"
+
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Sign macOS binary
+        if: runner.os == 'macOS'
+        env:
+          SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          BINARY="target/${{ matrix.target }}/release/siteone-crawler"
+
+          codesign --force --options runtime \
+            --sign "$SIGNING_IDENTITY" \
+            "$BINARY"
+
+          echo "Verifying signature..."
+          codesign --verify --verbose "$BINARY"
+          echo "Signature OK"
+
+      - name: Notarize macOS binary
+        if: runner.os == 'macOS'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          BINARY="target/${{ matrix.target }}/release/siteone-crawler"
+          NOTARIZE_ZIP="$RUNNER_TEMP/notarize.zip"
+
+          # ditto is required — Apple's notary service rejects zip-created archives
+          ditto -c -k --keepParent "$BINARY" "$NOTARIZE_ZIP"
+
+          echo "Submitting for notarization..."
+          xcrun notarytool submit "$NOTARIZE_ZIP" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          echo "Notarization complete"
+
+      - name: Clean up keychain
+        if: runner.os == 'macOS' && always()
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+          if [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH"
+          fi
+      # ────────────────────────────────────────────────────────────────
+
+      - name: Package (Unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ARTIFACT="siteone-crawler-v${VERSION}-${{ matrix.artifact_suffix }}"
+          mkdir -p "staging/siteone-crawler"
+          cp "target/${{ matrix.target }}/release/siteone-crawler" "staging/siteone-crawler/"
+          cp README.md "staging/siteone-crawler/" 2>/dev/null || true
+          cp LICENSE "staging/siteone-crawler/" 2>/dev/null || true
+          chmod +x "staging/siteone-crawler/siteone-crawler"
+          (cd staging && tar czf "../${ARTIFACT}.tar.gz" siteone-crawler/)
+          echo "ARTIFACT_PATH=${ARTIFACT}.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Package (Windows)
+        if: matrix.archive == 'zip'
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ARTIFACT="siteone-crawler-v${VERSION}-${{ matrix.artifact_suffix }}"
+          mkdir -p "staging/siteone-crawler"
+          cp "target/${{ matrix.target }}/release/siteone-crawler.exe" "staging/siteone-crawler/"
+          cp README.md "staging/siteone-crawler/" 2>/dev/null || true
+          cp LICENSE "staging/siteone-crawler/" 2>/dev/null || true
+          (cd staging && 7z a -r "../${ARTIFACT}.zip" siteone-crawler/)
+          echo "ARTIFACT_PATH=${ARTIFACT}.zip" >> "$GITHUB_ENV"
+
+      # ── Build .deb and .rpm packages (Linux only) ──────────────
+      - name: Install cross-compilation tools (arm64)
+        if: runner.os == 'Linux' && matrix.cross
+        run: sudo apt-get install -y binutils-aarch64-linux-gnu
+
+      - name: Strip binary (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          BINARY="target/${{ matrix.target }}/release/siteone-crawler"
+          if [[ "${{ matrix.target }}" == "aarch64"* ]]; then
+            aarch64-linux-gnu-strip -s "$BINARY" || true
+          else
+            strip -s "$BINARY" || true
+          fi
+
+      - name: Build .deb package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          cargo install cargo-deb
+          if [[ "${{ matrix.musl }}" == "true" ]]; then
+            cargo deb --no-build --no-strip --target ${{ matrix.target }} --variant static
+          else
+            cargo deb --no-build --no-strip --target ${{ matrix.target }}
+          fi
+          echo "DEB_PATH=$(ls target/${{ matrix.target }}/debian/*.deb)" >> "$GITHUB_ENV"
+
+      - name: Build .rpm package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          cargo install cargo-generate-rpm
+          mkdir -p target/release
+          cp "target/${{ matrix.target }}/release/siteone-crawler" target/release/
+          if [[ "${{ matrix.musl }}" == "true" ]]; then
+            # Override package name for static/musl variant
+            sed -i 's/^name = "siteone-crawler"$/name = "siteone-crawler-static"/' Cargo.toml
+          fi
+          cargo generate-rpm --target ${{ matrix.target }}
+          echo "RPM_PATH=$(find target -name '*.rpm' -path '*/generate-rpm/*' | head -1)" >> "$GITHUB_ENV"
+
+      - name: Upload .deb artifact
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: siteone-crawler-${{ matrix.artifact_suffix }}-deb
+          path: ${{ env.DEB_PATH }}
+
+      - name: Upload .rpm artifact
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: siteone-crawler-${{ matrix.artifact_suffix }}-rpm
+          path: ${{ env.RPM_PATH }}
+      # ────────────────────────────────────────────────────────────────
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: siteone-crawler-${{ matrix.artifact_suffix }}
+          path: ${{ env.ARTIFACT_PATH }}
+
+  # ─────────────────────────────────────────────────────────────────
+  # Build Alpine .apk packages from musl binaries
+  # ─────────────────────────────────────────────────────────────────
+  package-alpine:
+    name: Build Alpine .apk (${{ matrix.arch }})
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            artifact_suffix: linux-musl-x64
+          - arch: aarch64
+            artifact_suffix: linux-musl-arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Download musl binary
+        uses: actions/download-artifact@v8
+        with:
+          name: siteone-crawler-${{ matrix.artifact_suffix }}
+          path: dist
+
+      - name: Extract binary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          tar xzf "dist/siteone-crawler-v${VERSION}-${{ matrix.artifact_suffix }}.tar.gz" -C dist
+
+      - name: Setup Alpine
+        uses: jirutka/setup-alpine@v1
+        with:
+          arch: ${{ matrix.arch }}
+          packages: abuild
+
+      - name: Prepare signing key
+        shell: alpine.sh --root {0}
+        env:
+          ALPINE_RSA_KEY: ${{ secrets.ALPINE_RSA_PRIVATE_KEY }}
+          ALPINE_RSA_PUB: ${{ secrets.ALPINE_RSA_PUBLIC_KEY }}
+        run: |
+          BUILDER=runner
+
+          # Install signing key
+          mkdir -p /etc/apk/keys
+          printf '%s\n' "$ALPINE_RSA_PUB" > /etc/apk/keys/siteone.rsa.pub
+
+          # Setup abuild config for builder
+          mkdir -p "/home/$BUILDER/.abuild"
+          printf '%s\n' "$ALPINE_RSA_KEY" > "/home/$BUILDER/.abuild/siteone.rsa"
+          printf '%s\n' "$ALPINE_RSA_PUB" > "/home/$BUILDER/.abuild/siteone.rsa.pub"
+          chmod 600 "/home/$BUILDER/.abuild/siteone.rsa"
+          cat > "/home/$BUILDER/.abuild/abuild.conf" << 'EOF'
+          PACKAGER_PRIVKEY="$HOME/.abuild/siteone.rsa"
+          EOF
+          chown -R "$BUILDER" "/home/$BUILDER/.abuild"
+
+          # Add user to abuild group
+          addgroup "$BUILDER" abuild
+
+      - name: Build .apk
+        shell: alpine.sh {0}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          ARCH=$(uname -m)
+
+          # Prepare build directory
+          mkdir -p ~/build
+          cp "$GITHUB_WORKSPACE/dist/siteone-crawler/siteone-crawler" ~/build/
+          cp "$GITHUB_WORKSPACE/LICENSE" ~/build/ 2>/dev/null || true
+
+          # Create APKBUILD
+          cat > ~/build/APKBUILD << EOF
+          # Maintainer: Jan Reges <jan.reges@siteone.cz>
+          pkgname=siteone-crawler
+          pkgver=${VERSION}
+          pkgrel=1
+          pkgdesc="Website crawler and QA toolkit in Rust"
+          url="https://crawler.siteone.io/"
+          arch="${ARCH}"
+          license="MIT"
+          source=""
+          options="!check !strip"
+
+          package() {
+              install -Dm755 "\$startdir/siteone-crawler" "\$pkgdir/usr/bin/siteone-crawler"
+              install -Dm644 "\$startdir/LICENSE" "\$pkgdir/usr/share/licenses/\$pkgname/LICENSE" 2>/dev/null || true
+          }
+          EOF
+
+          # Build the package
+          cd ~/build
+          abuild -d -P ~/packages
+
+          # Copy and rename to include arch (both arches produce the same filename)
+          mkdir -p "$GITHUB_WORKSPACE/apk-out"
+          for f in $(find ~/packages -name '*.apk'); do
+            BASENAME=$(basename "$f" .apk)
+            cp "$f" "$GITHUB_WORKSPACE/apk-out/${BASENAME}-${ARCH}.apk"
+          done
+
+      - name: Upload .apk artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: siteone-crawler-alpine-${{ matrix.arch }}
+          path: apk-out/*.apk
+
+  release:
+    name: Create GitHub Release
+    needs: [build, package-alpine]
+    runs-on: ubuntu-latest
+    if: always() && startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Determine version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: List artifacts
+        run: ls -lhR artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "v${{ steps.version.outputs.version }}"
+          body: |
+            ### Downloads
+
+            | Platform | Architecture | File |
+            |----------|-------------|------|
+            | Linux | x64 | `siteone-crawler-v${{ steps.version.outputs.version }}-linux-x64.tar.gz` |
+            | Linux | arm64 | `siteone-crawler-v${{ steps.version.outputs.version }}-linux-arm64.tar.gz` |
+            | Linux | x64 (musl/static) | `siteone-crawler-v${{ steps.version.outputs.version }}-linux-musl-x64.tar.gz` |
+            | Linux | arm64 (musl/static) | `siteone-crawler-v${{ steps.version.outputs.version }}-linux-musl-arm64.tar.gz` |
+            | macOS | arm64 (Apple Silicon) | `siteone-crawler-v${{ steps.version.outputs.version }}-macos-arm64.tar.gz` |
+            | macOS | x64 (Intel) | `siteone-crawler-v${{ steps.version.outputs.version }}-macos-x64.tar.gz` |
+            | Windows | x64 | `siteone-crawler-v${{ steps.version.outputs.version }}-win-x64.zip` |
+            | Windows | arm64 | `siteone-crawler-v${{ steps.version.outputs.version }}-win-arm64.zip` |
+
+            ### Linux packages (glibc — best performance, requires glibc 2.39+)
+
+            | Format | Architecture | File |
+            |--------|-------------|------|
+            | Debian/Ubuntu (.deb) | x64 | `siteone-crawler_${{ steps.version.outputs.version }}-1_amd64.deb` |
+            | Debian/Ubuntu (.deb) | arm64 | `siteone-crawler_${{ steps.version.outputs.version }}-1_arm64.deb` |
+            | Fedora/RHEL (.rpm) | x64 | `siteone-crawler-${{ steps.version.outputs.version }}-1.x86_64.rpm` |
+            | Fedora/RHEL (.rpm) | arm64 | `siteone-crawler-${{ steps.version.outputs.version }}-1.aarch64.rpm` |
+
+            ### Linux packages (musl/static — any Linux, ~50–80% slower)
+
+            | Format | Architecture | File |
+            |--------|-------------|------|
+            | Debian/Ubuntu (.deb) | x64 | `siteone-crawler-static_${{ steps.version.outputs.version }}-1_amd64.deb` |
+            | Debian/Ubuntu (.deb) | arm64 | `siteone-crawler-static_${{ steps.version.outputs.version }}-1_arm64.deb` |
+            | Fedora/RHEL (.rpm) | x64 | `siteone-crawler-static-${{ steps.version.outputs.version }}-1.x86_64.rpm` |
+            | Fedora/RHEL (.rpm) | arm64 | `siteone-crawler-static-${{ steps.version.outputs.version }}-1.aarch64.rpm` |
+            | Alpine (.apk) | x64 | `siteone-crawler-${{ steps.version.outputs.version }}-r1-x86_64.apk` |
+            | Alpine (.apk) | arm64 | `siteone-crawler-${{ steps.version.outputs.version }}-r1-aarch64.apk` |
+
+            ### Quick start
+
+            ```bash
+            # Extract and run
+            tar xzf siteone-crawler-v${{ steps.version.outputs.version }}-linux-x64.tar.gz
+            cd siteone-crawler
+            ./siteone-crawler --url=https://example.com
+            ```
+
+            ### Install via package manager
+
+            ```bash
+            # Debian/Ubuntu (glibc — Ubuntu 24.04+, Debian 13+)
+            sudo dpkg -i siteone-crawler_${{ steps.version.outputs.version }}-1_amd64.deb
+
+            # Debian/Ubuntu (static/musl — older distributions)
+            sudo dpkg -i siteone-crawler-static_${{ steps.version.outputs.version }}-1_amd64.deb
+
+            # Fedora/RHEL
+            sudo dnf install ./siteone-crawler-${{ steps.version.outputs.version }}-1.x86_64.rpm
+            ```
+          files: artifacts/*
+          generate_release_notes: true
+          draft: true
+          prerelease: false

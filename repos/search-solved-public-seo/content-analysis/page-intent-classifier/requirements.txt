@@ -1,0 +1,6 @@
+streamlit
+pandas>=2.2.0
+requests
+beautifulsoup4
+openai
+html2text

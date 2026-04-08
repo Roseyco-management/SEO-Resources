@@ -1,0 +1,6 @@
+#!/bin/sh
+
+CURR_DIR="$( cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+mkdir -p ${HOME}/.greenflare
+exec "$CURR_DIR/Greenflare" > ${HOME}/.greenflare/gflare-$(date +"%Y-%m-%d_%H-%M-%S").log

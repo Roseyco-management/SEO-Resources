@@ -1,0 +1,122 @@
+---
+jobs:
+  macos-build:
+    environment:
+      GFLAREVER: "<< pipeline.parameters.greenflare-release >>"
+    macos:
+      xcode: "12.5.1"
+    resource_class: macos.x86.medium.gen2
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "5b:39:8e:43:9c:7f:4a:a9:dd:9a:1e:cb:15:0b:8b:76"
+      - checkout
+      - run:
+          command: curl -O https://www.python.org/ftp/python/3.11.0/python-3.11.0-macos11.pkg
+          name: "Download Python"
+      - run:
+          command: sudo installer -pkg python-3.11.0-macos11.pkg -target /
+          name: "Install Python"
+      - run:
+          command: |
+              /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 -m pip install pip --upgrade
+              /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 -m pip install wheel==0.38.4
+              /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 -m pip install -r requirements.txt
+              /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 -m pip install py2app==0.28.4
+          name: "Install dependencies"
+      - run:
+          command: |
+              /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 setup-py2app.py py2app
+              chmod +x macos/launch-mac
+              cp macos/launch-mac dist/Greenflare.app/Contents/MacOS/
+              plutil -replace CFBundleExecutable -string launch-mac dist/Greenflare.app/Contents/Info.plist
+          name: "Freeze macOS app"
+      - run:
+          command: |
+              export GFLAREVER=$(/Library/Frameworks/Python.framework/Versions/3.11/bin/python3 -c "from greenflare.core.defaults import Defaults; print(Defaults.version)")
+              mkdir results/
+              cd dist/
+              hdiutil create ./greenflare-${GFLAREVER}-x86_64-1.dmg -srcfolder Greenflare.app -ov
+              mv greenflare-*.dmg ../results/
+          name: "Package .dmg app bundle"
+      - store_artifacts:
+          path: results/
+  ubuntu-build:
+    executor: python/default
+    steps:
+      - checkout
+      - python/load-cache
+      - python/install-deps
+      - python/save-cache
+      - run:
+          command: |
+              python --version
+              export GFLAREVER=$(python -c "from greenflare.core.defaults import Defaults; print(Defaults.version)")
+              python build_binary.py build_exe
+              tar -zcvf linux-build.tar.gz build/
+              mkdir results/
+              mv linux-build.tar.gz results/
+          name: "Freeze Linux Binary"
+      - store_artifacts:
+          path: results/
+  windows-build:
+    environment:
+      GFLAREVER: "<< pipeline.parameters.greenflare-release >>"
+    executor: win/default
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "5b:39:8e:43:9c:7f:4a:a9:dd:9a:1e:cb:15:0b:8b:76"
+      - checkout
+      - python/load-cache
+      - python/save-cache
+      - run:
+          command: |
+              choco install python --version=3.8.6
+              refreshenv
+              python --version
+              $Env:Path
+          name: "Install Python"
+      - run:
+          command: |
+              choco install innosetup
+              refreshenv
+          name: "Install innosetup" 
+      - run:
+          command: |
+              pip install --user pip --upgrade
+              pip install --user -r requirements.txt
+              pip install cx-freeze==6.1
+          name: "Install dependencies"
+      - run:
+          command: |
+              $env:GFLAREVER=$(python -c "from greenflare.core.defaults import Defaults; print(Defaults.version)")
+              python build_binary.py build_exe
+          name: "Freeze Windows Programme"
+          shell: powershell.exe
+      - run:
+          command: |
+            iscc.exe installer.iss
+          name: "Build Windows Installer Setup"
+      - store_artifacts:
+          path: Output/
+orbs:
+  python: circleci/python@0.3.0
+  win: circleci/windows@2.4.0
+parameters:
+  greenflare-release:
+    default: "0.0"
+    type: string
+
+version: 2.1
+workflows:
+  main:
+    jobs:
+      - windows-build:
+          filters:
+            branches:
+              only: master
+      - macos-build:
+          filters:
+            branches:
+              only: master

@@ -1,0 +1,40 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4.0.0
+
+      - name: Use Node.js v24
+        uses: actions/setup-node@v5
+        with:
+          node-version: v24
+          registry-url: https://registry.npmjs.org/
+          cache: pnpm
+
+      - run: pnpm install
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
