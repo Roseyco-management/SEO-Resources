@@ -17,6 +17,26 @@ SEO (Search Engine Optimization) makes your website show up when people search o
 
 ## Your First SEO Project (Step by Step)
 
+### Step 0: Research Your Market
+
+Before you touch anything, understand your market. Open [Perplexity](https://perplexity.ai) and ask:
+
+```
+"What are the biggest challenges facing [your industry] in 2026?"
+"What do customers complain about most with [your type of product/service]?"
+"What are the most common questions people ask about [your topic]?"
+"Who are the top competitors in [your niche] and what do they do well?"
+```
+
+Then Google your main topic and write down:
+- Every autocomplete suggestion
+- Every "People Also Ask" question
+- What type of content ranks on page 1
+
+This gives you your keyword list, content ideas, and competitive landscape — all before writing a single word.
+
+Full guide: [Search Research Workflow](guides/search-research-workflow.md)
+
 ### Step 1: Audit Your Site
 
 Ask Claude: "Audit [my-site.com] for SEO issues using the SEO-Resources repo"

@@ -11,6 +11,11 @@ When asked to do SEO work on any project, follow this decision tree:
 2. Run an audit using the checklist in the playbook
 3. Follow the 90-day quick start plan
 
+### "I need to do market research / find topics / understand my audience"
+1. Read [Search Research Workflow](guides/search-research-workflow.md) — covers Perplexity, Google, and AI search for research
+2. Has exact prompts to use, competitor research methods, and a research-to-action cheat sheet
+3. For customer research, use the `skills/customer-research/` skill
+
 ### "I need to optimize content for AI search (ChatGPT, Perplexity, etc.)"
 1. Read [GEO/AEO/LLMO Research](research/seo-geo-aeo-llmo-research-2026.md)
 2. Use the `/ai-seo` skill if available
@@ -19,6 +24,7 @@ When asked to do SEO work on any project, follow this decision tree:
 1. Read [Content Creation Workflow](guides/seo-content-creation-workflow.md)
 2. For topic planning, use [Topical Maps & Clustering](guides/topical-maps-and-clustering.md)
 3. For keyword research, use [Keyword Clustering Guide](guides/keyword-clustering-guide.md)
+4. For research before writing, use [Search Research Workflow](guides/search-research-workflow.md)
 
 ### "I need to add schema/structured data"
 1. Read [the schema-markup skill](skills/schema-markup/SKILL.md) for patterns
@@ -43,6 +49,7 @@ When asked to do SEO work on any project, follow this decision tree:
 
 | Guide | When to use it |
 |-------|---------------|
+| `guides/search-research-workflow.md` | Using Perplexity & Google for market research, topics, competitors |
 | `guides/seo-master-playbook-2026.md` | Starting point for any SEO project. Full strategy. |
 | `guides/keyword-clustering-guide.md` | Researching and grouping keywords by intent |
 | `guides/topical-maps-and-clustering.md` | Planning content clusters and pillar pages |
