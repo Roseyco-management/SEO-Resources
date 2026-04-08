@@ -33,9 +33,15 @@ Battle-tested frameworks and implementation guides:
 
 ---
 
-## Tool Repositories (`/repos/`)
+## Tool Repositories (52 repos)
 
-### Included Repos (19 tools)
+> **Note:** Repos are not included in this GitHub repository (they'd be 3.9GB of third-party code). To clone all 52 locally, run:
+> ```bash
+> ./tools/clone-repos.sh
+> ```
+> This shallow-clones every repo into `/repos/`.
+
+### Originally Curated (19 tools)
 
 #### WordPress SEO
 - **yoast-seo** - #1 WordPress SEO plugin, full source
