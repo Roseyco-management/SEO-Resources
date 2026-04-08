@@ -2,6 +2,24 @@
 
 The most comprehensive open-source SEO and marketing resource repository. Covers every layer of modern search optimization, conversion rate optimization, growth marketing, and AI-powered marketing automation.
 
+## New to SEO? Start here: [START-HERE.md](START-HERE.md)
+
+## Using This From Another Project
+
+Add this line to your project's `CLAUDE.md`:
+
+```markdown
+## SEO Reference
+When doing SEO work, reference /Users/baileybarry/SEO-Resources/CLAUDE.md for guides, tools, and frameworks.
+```
+
+Or just tell Claude:
+```
+"Reference /Users/baileybarry/SEO-Resources and help me with SEO for this site"
+```
+
+---
+
 ## What's Inside
 
 ### Guides & Playbooks (`/guides/`)
