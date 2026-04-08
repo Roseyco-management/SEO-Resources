@@ -100,7 +100,7 @@ Or read [GEO/AEO/LLMO Research](research/seo-geo-aeo-llmo-research-2026.md).
 ### From any project, just say:
 
 ```
-"Reference /Users/baileybarry/SEO-Resources and help me with SEO for this site"
+"Reference ~/SEO-Resources and help me with SEO for this site"
 ```
 
 ```
@@ -115,7 +115,8 @@ Or read [GEO/AEO/LLMO Research](research/seo-geo-aeo-llmo-research-2026.md).
 
 ```markdown
 ## SEO Reference
-When doing SEO work, reference /Users/baileybarry/SEO-Resources/CLAUDE.md for guides, tools, and frameworks.
+When doing SEO work, reference the SEO-Resources repo (clone from https://github.com/Roseyco-management/SEO-Resources).
+Read SEO-Resources/CLAUDE.md for the full index of guides, tools, skills, and frameworks.
 ```
 
 That's it. Claude will know where to find everything.

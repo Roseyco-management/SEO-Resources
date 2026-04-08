@@ -6,16 +6,21 @@ The most comprehensive open-source SEO and marketing resource repository. Covers
 
 ## Using This From Another Project
 
-Add this line to your project's `CLAUDE.md`:
+**Option 1:** Clone this repo alongside your project and tell Claude:
+```
+"Reference the SEO-Resources repo and help me with SEO for this site"
+```
 
+**Option 2:** Add this to your project's `CLAUDE.md`:
 ```markdown
 ## SEO Reference
-When doing SEO work, reference /Users/baileybarry/SEO-Resources/CLAUDE.md for guides, tools, and frameworks.
+When doing SEO work, reference the SEO-Resources repo (clone from https://github.com/Roseyco-management/SEO-Resources).
+Read SEO-Resources/CLAUDE.md for the full index of guides, tools, skills, and frameworks.
 ```
 
-Or just tell Claude:
-```
-"Reference /Users/baileybarry/SEO-Resources and help me with SEO for this site"
+**Option 3:** Add as a git submodule:
+```bash
+git submodule add https://github.com/Roseyco-management/SEO-Resources.git seo-resources
 ```
 
 ---
